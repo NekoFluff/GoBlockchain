@@ -7,18 +7,22 @@ package main
 // TODO: Replacement of chain refreshes proof of work mining
 
 import (
+	"bufio"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"os"
+	"strconv"
+	"sync"
 	"time"
 
 	"github.com/davecgh/go-spew/spew" // pretty print slices
-	"github.com/gorilla/mux"          // web handler
-	"github.com/joho/godotenv"        // read .env
+	"github.com/gorilla/mux"
+	"github.com/joho/godotenv" // read .env
 )
 
 type Block struct {
@@ -28,11 +32,14 @@ type Block struct {
 	Hash      string
 	PrevHash  string
 }
+
 type Message struct {
 	BPM int
 }
 
 var Blockchain []Block
+var bcServer chan []Block //bsServer (a.k.a Blockchain Server) is a channel that handles incoming concurrent Blockchains (which will be broadcast to the other nodes)
+var mutex = &sync.Mutex{}
 
 /*
 	Generates the hash of a block
@@ -106,7 +113,7 @@ func replaceChain(newBlocks []Block) {
 }
 
 /*
-	Retirms object that conforms to http.Handler interface
+	Returms an object that conforms to http.Handler interface
 */
 func makeMuxRouter() http.Handler {
 	muxRouter := mux.NewRouter()
@@ -208,6 +215,97 @@ func run() error {
 	return nil
 }
 
+/*
+	Handles TCP Connections
+*/
+func handleTCPConn(conn net.Conn) {
+	// Make sure to close the connection once the function finishes
+	defer conn.Close()
+
+	println("New connection established")
+
+	// Scan input
+	scanner := bufio.NewScanner(conn)
+
+	// Generate blocks in a goroutine
+	go func() {
+		for scanner.Scan() {
+			// Ask for BPM from the user
+			io.WriteString(conn, "Enter a new BPM:")
+
+			// Convert text to number
+			bpm, err := strconv.Atoi(scanner.Text())
+			if err != nil {
+				log.Printf("%v is not a number: %v", scanner.Text(), err)
+				continue
+			}
+
+			// Create a new block with the data
+			newBlock, err := generateBlock(Blockchain[len(Blockchain)-1], bpm)
+
+			if err != nil {
+				log.Println(err)
+				continue
+			}
+
+			// Check for validity
+			if isBlockValid(newBlock, Blockchain[len(Blockchain)-1]) {
+				newBlockchain := append(Blockchain, newBlock)
+				replaceChain(newBlockchain)
+			}
+
+			// Put the new blockchain in the channel (bcServer)
+			bcServer <- Blockchain
+		}
+	}()
+
+	// Simulate Receiving Broadcast (Client)
+	go func() {
+		for {
+			// Every 30 seconds, print out the current blockchain
+			time.Sleep(30 * time.Second)
+			mutex.Lock()
+			output, err := json.Marshal(Blockchain)
+			if err != nil {
+				log.Fatal(err)
+			}
+			mutex.Unlock()
+			io.WriteString(conn, "\n"+string(output)+"\n")
+		}
+	}()
+
+	// Print out recieved blockchains (Server)
+	for _ = range bcServer {
+		println("Server recieved: ")
+		spew.Dump(Blockchain)
+	}
+	println("Connection closed")
+
+}
+
+/*
+	Listens for TCP requests on Port #XXXX
+	Calls handleTCPConn() when a request is recieved
+*/
+func startTCPServer() {
+	// Listen for TCP packets at Port #XXXX
+	server, err := net.Listen("tcp", ":"+os.Getenv("ADDR"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer server.Close()
+
+	// Create connection once we hear a request
+	// Infinite loop blocks defer server.Close()
+	for {
+		conn, err := server.Accept()
+		if err != nil {
+			log.Fatal(err)
+		}
+		go handleTCPConn(conn)
+	}
+}
+
 func main() {
 	// Attempt to read environment variables
 	err := godotenv.Load()
@@ -215,14 +313,14 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// goroutine to run server?
-	go func() {
-		t := time.Now()
-		genesisBlock := Block{0, t.String(), 0, "", ""}
-		spew.Dump(genesisBlock)
-		Blockchain = append(Blockchain, genesisBlock)
-	}()
+	// Make (channel of blockchains)
+	bcServer = make(chan []Block)
 
-	// Run the server
-	log.Fatal(run())
+	// Create a genesis block
+	t := time.Now()
+	genesisBlock := Block{0, t.String(), 0, "", ""}
+	spew.Dump(genesisBlock)
+	Blockchain = append(Blockchain, genesisBlock)
+
+	startTCPServer()
 }
