@@ -5,7 +5,6 @@ package main
 // TODO: Prrof of Work
 // TODO: Listen for network transactions
 // TODO: Replacement of chain refreshes proof of work mining
-// TODO: P2P
 
 import (
 	"bufio"
