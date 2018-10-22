@@ -7,6 +7,8 @@ https://medium.com/karachain/why-i-am-building-a-blockchain-in-go-6395a60b24dd
 Created using guides by Coral Health:<br>
 v1: https://medium.com/@mycoralhealth/code-your-own-blockchain-in-less-than-200-lines-of-go-e296282bcffc<br>
 v2: https://medium.com/@mycoralhealth/part-2-networking-code-your-own-blockchain-in-less-than-200-lines-of-go-17fe1dad46e1<br>
+v3: https://medium.com/@mycoralhealth/code-your-own-blockchain-mining-algorithm-in-go-82c6a71aba1f<br>
+v4: https://medium.com/@mycoralhealth/code-your-own-proof-of-stake-blockchain-in-go-610cd99aa658<br>
 
 <h3>Go Dependencies</h3>
 <code>go get github.com/davecgh/go-spew/spew</code><br>
