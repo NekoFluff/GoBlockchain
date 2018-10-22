@@ -315,9 +315,7 @@ func handleTCPConn(conn net.Conn) {
 	io.WriteString(conn, "\nEnter a new BPM:")
 	go func() {
 		for {
-			fmt.Println("Hello")
 			for scanner.Scan() {
-				fmt.Println("Scanned Value")
 				// Convert text to number
 				bpm, err := strconv.Atoi(scanner.Text())
 				if err != nil {
@@ -334,22 +332,18 @@ func handleTCPConn(conn net.Conn) {
 				mutex.Unlock()
 
 				// Create a new block with the data
-				fmt.Println("Generating block")
 				newBlock, err := generateBlock(oldlastIndex, bpm, address)
-				fmt.Println("Generated block")
 				if err != nil {
 					log.Println(err)
 					continue
 				}
 
 				// Check for validity
-				fmt.Println("Adding to candidate")
 				if isBlockValid(newBlock, oldlastIndex) {
 					// newBlockchain := append(Blockchain, newBlock)
 					// replaceChain(newBlockchain)
 					candidateBlocks <- newBlock
 				}
-				fmt.Println("added")
 				// Put the new blockchain in the channel (bcServer)
 				// bcServer <- Blockchain
 
