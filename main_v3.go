@@ -314,7 +314,10 @@ func handleTCPConn(conn net.Conn) {
 	}()
 
 	// Print out recieved blockchains (Server)
+	println("Preparting to recieve")
 	for _ = range bcServer {
+		println(conn)
+		4
 		println("Server recieved: ")
 		spew.Dump(Blockchain)
 	}
